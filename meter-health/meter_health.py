@@ -5,7 +5,7 @@ logging.basicConfig(filename='example.log',level=logging.DEBUG)
 from oauthlib.oauth2 import LegacyApplicationClient
 from requests_oauthlib import OAuth2Session
 
-class BaseScript2:
+class MeterHealth:
     # Change the values here to match your user and your API credentials
     CLIENT_ID = 'WRITE YOUR API CLIENT ID HERE'
     CLIENT_SECRET = 'WRITE YOUR API CLIENT SECRET HERE'
@@ -94,5 +94,5 @@ class BaseScript2:
     def generate_request_url(self, path):
         return self.BASE_URL + path
 
-test2 = BaseScript2()
+test2 = MeterHealth()
 test2.create_report()
