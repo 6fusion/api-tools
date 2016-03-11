@@ -3,6 +3,7 @@ import requests
 import csv
 import logging
 import config.credentials
+import time
 from oauthlib.oauth2 import LegacyApplicationClient
 from requests_oauthlib import OAuth2Session
 
@@ -11,10 +12,12 @@ logging.basicConfig(filename='example.log', level=logging.DEBUG)
 
 class MeterHealth:
     # URL information for the API. ONLY change this method if you know what you are doing
-    BASE_URL = "http://54.90.173.204:8080"
+    BASE_URL = "http://52.73.16.241:8080"
     ORGANIZATIONS = "/api/v2.json"
     METERS = "/api/v2/organizations/%d/meters.json"
     TOKEN_URL = "/oauth/token"
+    TRIES = 20
+    SLEEP_SECONDS = 5
 
     def __init__(self):
         self.token = self.retrieve_token()
@@ -50,7 +53,7 @@ class MeterHealth:
         for organization in params['organizations']:
             print("Retrieving meters for organization %d of %d ...\n" % (organization_index, params['total_org']))
             organization_index += 1
-            meter_info = self.retrieve_meter_info_for(organization['remote_id'])
+            meter_info = self.retrieve_meter_info_for(organization['remote_id'], 0)
             self.write_meters_to_csv({"meter_info": meter_info,
                                       "organization": organization,
                                       "writer": params["writer"]})
@@ -86,15 +89,26 @@ class MeterHealth:
         del self.payload['expand']
         return response.json()
 
-    def retrieve_meter_info_for(self, org_id):
+    def retrieve_meter_info_for(self, org_id, try_number):
         # Requests meters for an organization, if they aren't meters it returns []
-        response = requests.get(self.generate_request_url(self.METERS % org_id), params=self.payload)
-        json_response = response.json()
-        return json_response['embedded']['meters'] if self.retrieve_meters_conditions(json_response) else []
+        if try_number < self.TRIES:
+            try:
+                response = requests.get(self.generate_request_url(self.METERS % org_id), params=self.payload)
+                json_response = response.json()
+                if 'success' in json_response:
+                    print("Reached the total requests allowed in a minute...\n Waiting to retry\n")
+                    time.sleep(self.SLEEP_SECONDS)
+                    print("Retrying for org %d \n" % org_id)
+                    self.retrieve_meter_info_for(org_id,try_number+1)
+                    return []
+                else:
+                    return json_response['embedded']['meters'] if self.retrieve_meters_conditions(json_response) else []
+            except:
+                print("Could not do request")
+                return []
 
     def retrieve_meters_conditions(self, json_response):
-        return (json_response and 'embedded' in json_response and 'meters' in json_response['embedded']
-                and json_response['embedded']['meters'])
+        return (json_response and 'embedded' in json_response and 'meters' in json_response['embedded'])
 
     def retrieve_token(self):
         """ Gets the authorization token if something is wrong during the request
