@@ -82,3 +82,5 @@ celerybeat-schedule
 
 # Credentials
 .config/credentials.py
+
+.idea
