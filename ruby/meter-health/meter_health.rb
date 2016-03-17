@@ -2,21 +2,23 @@ require 'rubygems'
 require 'bundler/setup'
 require 'rest_client'
 require 'json'
-require 'csv'
 require 'yaml'
 require_relative 'api_authentication.rb'
+require_relative 'csv_formatter.rb'
+require_relative 'helper_methods.rb'
 
 class MeterHealth
 
-  ORGANIZATIONS = "/api/v2.json"
-  METERS = "/api/v2/organizations/%d/meters.json"
-  SITE_BASE_URL = 'http://52.73.16.241:8080'
+  include HelperMethods
+
   TRIES = 20
   SLEEP_TIME = 5
 
   def initialize
     @credentials = retrieve_credentials
     @token = retrieve_token
+    @report = CsvFormatter.new(['Organization Name', 'Meter ID', 'Meter Name',
+              'Meter Type', 'Meter Status', 'Last Reading'])
   end
 
   def create_report
@@ -28,11 +30,6 @@ class MeterHealth
   end
 
   private
-  
-  def retrieve_credentials
-    file = File.read('./config/credentials.yml')
-    YAML.load(file)
-  end
 
   def retrieve_token
     api_authentication = ApiAuthentication.new()
@@ -42,41 +39,37 @@ class MeterHealth
   def request_information
     organizations = JSON.parse(retrieve_organizations)
     if organizations && organizations["embedded"]["organizations"]
-      write_to_csv(organizations["embedded"]["organizations"])
+      build_report(organizations["embedded"]["organizations"])
     else
       puts "No organizations were found"
     end
   end
 
   def retrieve_organizations
-    response = RestClient.get("#{SITE_BASE_URL}#{ORGANIZATIONS}",
+    response = RestClient.get("#{retrieve_site_base_url}#{retrieve_organizations_path}",
       { params: { access_token: @token, expand: 'organizations' } })
   end
 
-  def write_to_csv(organizations)
-    CSV.open(@credentials["file_name"], "w+") do |csv|
-      csv << ['Organization Name', 'Meter ID', 'Meter Name',
-              'Meter Type', 'Meter Status', 'Last Reading']
-      total_org = organizations.count
-      org_index = 1
-      organizations.each do |org|
-        print "Retrieving meters for organization #{org_index} of #{total_org}\n"
-        retrieve_and_write_meters_to_csv(org,csv)
-        org_index += 1
-      end
+  def build_report(organizations)
+    total_org = organizations.count
+    org_index = 1
+    organizations.each do |org|
+      print "Retrieving meters for organization #{org_index} of #{total_org}\n"
+      retrieve_and_write_meters_to_report(org)
+      org_index += 1
     end
   end
 
-  def retrieve_and_write_meters_to_csv(org,csv)
+  def retrieve_and_write_meters_to_report(org)
     meters = retrieve_meters_for_org(org)
     meters.each do |meter|
-      csv << [ org['name'],
+      @report.write([ org['name'],
                meter['remote_id'],
                meter['name'],
                meter['kind'],
                meter['status'],
                meter['last_processed_on']
-             ]
+             ])
     end
   end
 
@@ -93,8 +86,9 @@ class MeterHealth
   def request_meters(org)
     tries = TRIES
     begin
-      response = RestClient.get(("#{SITE_BASE_URL}#{METERS}" % org['remote_id']),
-      { params: { access_token: @token } })
+      response = RestClient.get(
+        ("#{retrieve_site_base_url}#{retrieve_meters_path}" % org['remote_id']),
+        { params: { access_token: @token } })
       return response
     rescue
       puts "Reached the total requests allowed in a minute...\n Waiting to retry\n"
