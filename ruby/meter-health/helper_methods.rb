@@ -1,6 +1,6 @@
 require 'yaml'
 module HelperMethods
-	def retrieve_credentials
+  def retrieve_credentials
     file = File.read('./config/credentials.yml')
     YAML.load(file)
   end

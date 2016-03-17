@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from oauthlib.oauth2 import LegacyApplicationClient
 from requests_oauthlib import OAuth2Session
 import config.credentials
