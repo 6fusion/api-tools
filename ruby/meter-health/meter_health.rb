@@ -1,24 +1,22 @@
 require 'rubygems'
 require 'bundler/setup'
 require 'rest_client'
-require 'oauth2'
-require 'nokogiri'
 require 'json'
 require 'csv'
 require 'yaml'
+require_relative 'api_authentication.rb'
 
 class MeterHealth
 
   ORGANIZATIONS = "/api/v2.json"
   METERS = "/api/v2/organizations/%d/meters.json"
   SITE_BASE_URL = 'http://52.73.16.241:8080'
-  SITE_OAUTH_PATH = '/oauth/token'
   TRIES = 20
   SLEEP_TIME = 5
 
   def initialize
     @credentials = retrieve_credentials
-    @token = generate_token
+    @token = retrieve_token
   end
 
   def create_report
@@ -36,12 +34,9 @@ class MeterHealth
     YAML.load(file)
   end
 
-  def generate_token
-    client = OAuth2::Client.new(@credentials['app_id'], @credentials['app_secret'],
-      site: SITE_BASE_URL, token_url: SITE_OAUTH_PATH, scope: @credentials['scope'])
-    token = client.password.get_token(@credentials['user_email'],
-      @credentials['user_password'],scope: @credentials['scope'])
-    token && token.token ? token.token : nil
+  def retrieve_token
+    api_authentication = ApiAuthentication.new()
+    api_authentication.generate_token
   end
 
   def request_information
@@ -63,7 +58,7 @@ class MeterHealth
       csv << ['Organization Name', 'Meter ID', 'Meter Name',
               'Meter Type', 'Meter Status', 'Last Reading']
       total_org = organizations.count
-      org_index = 0
+      org_index = 1
       organizations.each do |org|
         print "Retrieving meters for organization #{org_index} of #{total_org}\n"
         retrieve_and_write_meters_to_csv(org,csv)

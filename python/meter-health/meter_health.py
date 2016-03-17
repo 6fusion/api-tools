@@ -3,9 +3,8 @@ import requests
 import csv
 import logging
 import config.credentials
+from api_authentication import ApiAuthentication
 import time
-from oauthlib.oauth2 import LegacyApplicationClient
-from requests_oauthlib import OAuth2Session
 
 logging.basicConfig(filename='example.log', level=logging.DEBUG)
 
@@ -15,13 +14,16 @@ class MeterHealth:
     BASE_URL = "http://52.73.16.241:8080"
     ORGANIZATIONS = "/api/v2.json"
     METERS = "/api/v2/organizations/%d/meters.json"
-    TOKEN_URL = "/oauth/token"
     TRIES = 20
     SLEEP_SECONDS = 5
 
     def __init__(self):
         self.token = self.retrieve_token()
         self.payload = {'access_token': self.token}
+
+    def retrieve_token(self):
+        token_generator = ApiAuthentication()
+        return token_generator.retrieve_token()
 
     def create_report(self):
         """ It is the main method that calls
@@ -30,11 +32,11 @@ class MeterHealth:
         if self.token:
             organizations = self.retrieve_organizations()
             if organizations:
-                self.build_csv(organizations)
+                self.build_report(organizations)
             else:
                 print("There aren't organizations \n")
 
-    def build_csv(self, organizations):
+    def build_report(self, organizations):
         # Creates/opens the file which will store the info
         total_org = len(organizations)
         print("We found %d organizations \n" % total_org)
@@ -42,33 +44,33 @@ class MeterHealth:
             writer = csv.writer(csv_file)
             writer.writerow(['Organization Name', 'Meter ID', 'Meter Name',
                              'Meter Type', 'Meter Status', 'Last Reading'])
-            self.add_information_to_csv({'organizations': organizations,
-                                         'writer': writer,
-                                         'total_org': total_org})
+            self.add_information_to_report({'organizations': organizations,
+                                            'total_org': total_org,
+                                            'writer': writer})
             print("Process successfully finished, analyzed a total of %d organizations" % total_org)
 
-    def add_information_to_csv(self, params):
+    def add_information_to_report(self, params):
         # Iterates over the organizations to retrieve meters
         organization_index = 1
         for organization in params['organizations']:
             print("Retrieving meters for organization %d of %d ...\n" % (organization_index, params['total_org']))
             organization_index += 1
             meter_info = self.retrieve_meter_info_for(organization['remote_id'], 0)
-            self.write_meters_to_csv({"meter_info": meter_info,
-                                      "organization": organization,
-                                      "writer": params["writer"]})
+            self.write_meters_to_report({'meter_info': meter_info,
+                                      'organization': organization,
+                                      'writer': params['writer']})
 
-    def write_meters_to_csv(self, params):
+    def write_meters_to_report(self, params):
         """ Iterates over a meters for an organization
         to write the info to csv
         """
         for meter in params['meter_info']:
             params['writer'].writerow([params['organization']['name'],
-                                       meter['remote_id'],
-                                       meter['name'],
-                                       meter['kind'],
-                                       meter['status'],
-                                       meter['last_processed_on']])
+                           meter['remote_id'],
+                           meter['name'],
+                           meter['kind'],
+                           meter['status'],
+                           meter['last_processed_on']])
 
     def retrieve_organizations(self):
         # Validates response from server when retrieving organizations
@@ -110,31 +112,6 @@ class MeterHealth:
     def retrieve_meters_conditions(self, json_response):
         return (json_response and 'embedded' in json_response and 'meters' in json_response['embedded'])
 
-    def retrieve_token(self):
-        """ Gets the authorization token if something is wrong during the request
-        it returns [] and prints a message that the process failed
-        """
-        environment = self.set_token_variables()
-        try:
-            return self.build_authentication_token(environment)
-        except:
-            print("\n Check your credentials,we weren't able to retrieve an authorization token! \n")
-            return []
-
-    def set_token_variables(self):
-        client = LegacyApplicationClient(client_id=config.credentials.client_id)
-        oauth = OAuth2Session(client=client)
-        url = self.BASE_URL + self.TOKEN_URL
-        return {'client': client, 'oauth': oauth, 'url': url}
-
-    def build_authentication_token(self, environment):
-        token = environment['oauth'].fetch_token(token_url=environment['url'],
-                                                 username=config.credentials.username,
-                                                 password=config.credentials.password,
-                                                 client_id=config.credentials.client_id,
-                                                 client_secret=config.credentials.client_secret,
-                                                 scope=config.credentials.scope)
-        return token['access_token'] if (token and 'access_token' in token and token['access_token']) else []
 
     def generate_request_url(self, path):
         return self.BASE_URL + path
