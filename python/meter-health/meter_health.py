@@ -3,7 +3,9 @@ import requests
 import csv
 import logging
 import config.credentials
+import config.server_paths as server
 from api_authentication import ApiAuthentication
+from csv_formatter import CsvFormatter
 import time
 
 logging.basicConfig(filename='example.log', level=logging.DEBUG)
@@ -11,15 +13,14 @@ logging.basicConfig(filename='example.log', level=logging.DEBUG)
 
 class MeterHealth:
     # URL information for the API. ONLY change this method if you know what you are doing
-    BASE_URL = "http://52.73.16.241:8080"
-    ORGANIZATIONS = "/api/v2.json"
-    METERS = "/api/v2/organizations/%d/meters.json"
     TRIES = 20
     SLEEP_SECONDS = 5
 
     def __init__(self):
         self.token = self.retrieve_token()
         self.payload = {'access_token': self.token}
+        self.report = CsvFormatter(['Organization Name', 'Meter ID', 'Meter Name',
+                             'Meter Type', 'Meter Status', 'Last Reading'])
 
     def retrieve_token(self):
         token_generator = ApiAuthentication()
@@ -40,14 +41,9 @@ class MeterHealth:
         # Creates/opens the file which will store the info
         total_org = len(organizations)
         print("We found %d organizations \n" % total_org)
-        with open(config.credentials.file_name, 'w+') as csv_file:
-            writer = csv.writer(csv_file)
-            writer.writerow(['Organization Name', 'Meter ID', 'Meter Name',
-                             'Meter Type', 'Meter Status', 'Last Reading'])
-            self.add_information_to_report({'organizations': organizations,
-                                            'total_org': total_org,
-                                            'writer': writer})
-            print("Process successfully finished, analyzed a total of %d organizations" % total_org)
+        self.add_information_to_report({'organizations': organizations,
+                                        'total_org': total_org})
+        print("Process successfully finished, analyzed a total of %d organizations" % total_org)
 
     def add_information_to_report(self, params):
         # Iterates over the organizations to retrieve meters
@@ -57,15 +53,14 @@ class MeterHealth:
             organization_index += 1
             meter_info = self.retrieve_meter_info_for(organization['remote_id'], 0)
             self.write_meters_to_report({'meter_info': meter_info,
-                                      'organization': organization,
-                                      'writer': params['writer']})
+                                      'organization': organization})
 
     def write_meters_to_report(self, params):
         """ Iterates over a meters for an organization
         to write the info to csv
         """
         for meter in params['meter_info']:
-            params['writer'].writerow([params['organization']['name'],
+            self.report.write([params['organization']['name'],
                            meter['remote_id'],
                            meter['name'],
                            meter['kind'],
@@ -87,7 +82,7 @@ class MeterHealth:
     def request_organizations(self):
         # Requests organizations if they aren't returns []
         self.payload['expand'] = 'organizations'
-        response = requests.get(self.generate_request_url(self.ORGANIZATIONS), params=self.payload)
+        response = requests.get(self.generate_request_url(server.organizations_path), params=self.payload)
         del self.payload['expand']
         return response.json()
 
@@ -95,7 +90,7 @@ class MeterHealth:
         # Requests meters for an organization, if they aren't meters it returns []
         if try_number < self.TRIES:
             try:
-                response = requests.get(self.generate_request_url(self.METERS % org_id), params=self.payload)
+                response = requests.get(self.generate_request_url(server.meters_path % org_id), params=self.payload)
                 json_response = response.json()
                 if 'success' in json_response:
                     print("Reached the total requests allowed in a minute...\n Waiting to retry\n")
@@ -114,7 +109,7 @@ class MeterHealth:
 
 
     def generate_request_url(self, path):
-        return self.BASE_URL + path
+        return server.base_url + path
 
 test = MeterHealth()
 test.create_report()

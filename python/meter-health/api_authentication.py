@@ -1,12 +1,9 @@
 from oauthlib.oauth2 import LegacyApplicationClient
 from requests_oauthlib import OAuth2Session
 import config.credentials
-
+import config.server_paths as server
 
 class ApiAuthentication:
-
-    BASE_URL = "http://52.73.16.241:8080"
-    TOKEN_URL = "/oauth/token"
 
     def retrieve_token(self):
         """ Gets the authorization token if something is wrong during the request
@@ -22,7 +19,7 @@ class ApiAuthentication:
     def set_token_variables(self):
         client = LegacyApplicationClient(client_id=config.credentials.client_id)
         oauth = OAuth2Session(client=client)
-        url = self.BASE_URL + self.TOKEN_URL
+        url = server.base_url + server.token_path
         return {'client': client, 'oauth': oauth, 'url': url}
 
     def build_authentication_token(self, environment):
