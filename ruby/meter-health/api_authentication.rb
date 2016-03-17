@@ -10,9 +10,9 @@ class ApiAuthentication
 
   include HelperMethods
 
-	def initialize
-		@credentials = retrieve_credentials()
-	end
+  def initialize
+    @credentials = retrieve_credentials()
+  end
 
   def generate_token
     client = OAuth2::Client.new(@credentials['app_id'], @credentials['app_secret'],
