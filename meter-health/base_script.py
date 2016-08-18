@@ -14,7 +14,7 @@ class BaseScript2:
     SCOPE = ['admin_organization']
 
     # URL information for the API. ONLY change this method if you know what you are doing
-    BASE_URL = "http://54.90.173.204:8080"
+    BASE_URL = "https://api.6fusion.com"
     ORGANIZATIONS ="/api/v2.json"
     METERS = "/api/v2/organizations/%d/meters.json"
     TOKEN_URL = "/oauth/token"
