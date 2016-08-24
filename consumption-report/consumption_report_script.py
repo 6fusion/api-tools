@@ -16,11 +16,11 @@ logging.basicConfig(filename='consumption_report.log', level=logging.DEBUG)
 
 class ConsumptionReport:
     # Change the values here to match your user and your API credentials (or set a valid oauth token)
-    CLIENT_SECRET = "e4ec5e4d593980958f9abb8fb1b416384ab59cda47d67f15e823a13e7832b089"
-    CLIENT_ID = "bc6e260e38a77de79faa64f649a0281c25a0a58e5785ae31ab3caa6a1d1d9089"
-    USERNAME = "veristor.service@gmail.com"
-    PASSWORD = "@password1"
-    SCOPE = ["admin_organization"]
+    CLIENT_SECRET = ""
+    CLIENT_ID = ""
+    USERNAME = ""
+    PASSWORD = ""
+    SCOPE = [""]
     # OPTIONAL, please ensure that this token NEVER expires.
     # Leave it empty if you prefer that the app generates its own token each time
     OAUTH_TOKEN = ''
