@@ -16,11 +16,11 @@ logging.basicConfig(filename='consumption_report.log', level=logging.DEBUG)
 
 class ConsumptionReport:
     # Change the values here to match your user and your API credentials (or set a valid oauth token)
-    CLIENT_SECRET = ""
-    CLIENT_ID = ""
-    USERNAME = ""
-    PASSWORD = ""
-    SCOPE = [""]
+    CLIENT_SECRET = "<API SECRET HERE>"
+    CLIENT_ID = "<API CLIENT ID HERE>"
+    USERNAME = "<UC6 USER HERE>"
+    PASSWORD = "<UC6 PASSWORD HERE>"
+    SCOPE = ["admin_organization"]
     # OPTIONAL, please ensure that this token NEVER expires.
     # Leave it empty if you prefer that the app generates its own token each time
     OAUTH_TOKEN = ''
@@ -253,6 +253,7 @@ class ConsumptionReport:
 
     # Generates URL for different requests
     def generate_request_url(self, path):
+        print("Path: % " % path)
         return self.BASE_URL + path
 
     # Converts a float number to have just 2 decimals
